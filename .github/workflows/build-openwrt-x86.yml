@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout OpenWrt fork
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Free disk space
         run: |
@@ -37,7 +37,7 @@ jobs:
             python3-setuptools rsync swig unzip zlib1g-dev file wget jq
 
       - name: Cache downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: dl
           key: openwrt-dl-${{ runner.os }}-${{ hashFiles('feeds.conf.default', '.config') }}
@@ -53,6 +53,10 @@ jobs:
         run: |
           test -f .config
           make defconfig
+          grep -Fx 'CONFIG_GRUB_EFI_IMAGES=y' .config
+          grep -Fx 'CONFIG_GRUB_CONSOLE=y' .config
+          grep -Fx 'CONFIG_TARGET_SERIAL=""' .config
+          grep -Fx 'CONFIG_GRUB_TIMEOUT="1"' .config
           ./scripts/diffconfig.sh > build.diffconfig
           cat build.diffconfig
 
@@ -64,8 +68,34 @@ jobs:
         run: |
           make -j"$(nproc)" || make -j1 V=s
 
+      - name: Validate EFI GRUB auto-boot
+        run: |
+          set -eux
+          img="$(find bin/targets/x86/64 -maxdepth 1 -name '*combined-efi.img.gz' | sort | head -n 1)"
+          test -n "$img"
+          workdir="$(mktemp -d)"
+          loopdev=""
+          cleanup() {
+            set +e
+            sudo umount "$workdir/boot" 2>/dev/null
+            if [ -n "$loopdev" ]; then
+              sudo losetup -d "$loopdev" 2>/dev/null
+            fi
+            rm -rf "$workdir"
+          }
+          trap cleanup EXIT
+          gunzip -c "$img" > "$workdir/openwrt.img"
+          loopdev="$(sudo losetup --find --show --partscan "$workdir/openwrt.img")"
+          mkdir -p "$workdir/boot"
+          sudo mount "${loopdev}p1" "$workdir/boot"
+          sudo sed -n '1,80p' "$workdir/boot/boot/grub/grub.cfg"
+          sudo grep -Fx 'set default="0"' "$workdir/boot/boot/grub/grub.cfg"
+          sudo grep -Fx 'set timeout="1"' "$workdir/boot/boot/grub/grub.cfg"
+          sudo grep -F 'terminal_input console; terminal_output console' "$workdir/boot/boot/grub/grub.cfg"
+          ! sudo grep -E '(^|[ ;])serial([ ;]|$)' "$workdir/boot/boot/grub/grub.cfg"
+
       - name: Upload firmware artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openwrt-x86-64-efi
           path: |
