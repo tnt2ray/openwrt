@@ -72,37 +72,89 @@ jobs:
       - name: Validate EFI GRUB auto-boot
         run: |
           set -eux
-          img="$(find bin/targets/x86/64 -maxdepth 1 -name '*combined-efi.img.gz' | sort | head -n 1)"
-          test -n "$img"
-          workdir="$(mktemp -d)"
-          loopdev=""
-          cleanup() {
-            set +e
-            sudo umount "$workdir/boot" 2>/dev/null
-            if [ -n "$loopdev" ]; then
-              sudo losetup -d "$loopdev" 2>/dev/null
-            fi
-            rm -rf "$workdir"
-          }
-          trap cleanup EXIT
-          gunzip -c "$img" > "$workdir/openwrt.img"
-          loopdev="$(sudo losetup --find --show --partscan "$workdir/openwrt.img")"
-          mkdir -p "$workdir/boot"
-          sudo mount "${loopdev}p1" "$workdir/boot"
-          sudo sed -n '1,80p' "$workdir/boot/boot/grub/grub.cfg"
-          sudo grep -Fx 'set default="0"' "$workdir/boot/boot/grub/grub.cfg"
-          sudo grep -Fx 'set timeout="1"' "$workdir/boot/boot/grub/grub.cfg"
-          sudo grep -F 'terminal_input console serial; terminal_output console serial' "$workdir/boot/boot/grub/grub.cfg"
-          sudo grep -F 'serial --unit=0 --speed=115200' "$workdir/boot/boot/grub/grub.cfg"
-          ! sudo grep -Fx 'set timeout="0"' "$workdir/boot/boot/grub/grub.cfg"
+          found=0
+          while IFS= read -r img; do
+            found=1
+            workdir="$(mktemp -d)"
+            loopdev=""
+            cleanup_img() {
+              set +e
+              sudo umount "$workdir/boot" 2>/dev/null
+              if [ -n "$loopdev" ]; then
+                sudo losetup -d "$loopdev" 2>/dev/null
+              fi
+              rm -rf "$workdir"
+              set -e
+            }
+            trap cleanup_img EXIT
+            gunzip -c "$img" > "$workdir/openwrt.img"
+            loopdev="$(sudo losetup --find --show --partscan "$workdir/openwrt.img")"
+            mkdir -p "$workdir/boot"
+            sudo mount "${loopdev}p1" "$workdir/boot"
+            echo "Checking $img"
+            sudo sed -n '1,80p' "$workdir/boot/boot/grub/grub.cfg"
+            sudo grep -Fx 'set default="0"' "$workdir/boot/boot/grub/grub.cfg"
+            sudo grep -Fx 'set timeout="1"' "$workdir/boot/boot/grub/grub.cfg"
+            sudo grep -F 'terminal_input console serial; terminal_output console serial' "$workdir/boot/boot/grub/grub.cfg"
+            sudo grep -F 'serial --unit=0 --speed=115200' "$workdir/boot/boot/grub/grub.cfg"
+            ! sudo grep -Fx 'set timeout="0"' "$workdir/boot/boot/grub/grub.cfg"
+            cleanup_img
+            trap - EXIT
+          done < <(find bin/targets/x86/64 -maxdepth 1 -name '*combined-efi.img.gz' | sort)
+          test "$found" -eq 1
 
-      - name: Upload firmware artifacts
+      - name: Upload ext4 EFI image
         uses: actions/upload-artifact@v7
         with:
-          name: openwrt-x86-64-efi
-          path: |
-            bin/targets/x86/64/*.img.gz
-            bin/targets/x86/64/*.manifest
-            bin/targets/x86/64/*.buildinfo
-            bin/targets/x86/64/sha256sums
-            build.diffconfig
+          name: openwrt-x86-64-generic-ext4-combined-efi.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-ext4-combined-efi.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload ext4 BIOS image
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic-ext4-combined.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-ext4-combined.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload ext4 rootfs
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic-ext4-rootfs.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-ext4-rootfs.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload squashfs EFI image
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload squashfs BIOS image
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic-squashfs-combined.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload squashfs rootfs
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic-squashfs-rootfs.img.gz
+          path: bin/targets/x86/64/openwrt-x86-64-generic-squashfs-rootfs.img.gz
+          if-no-files-found: error
+          archive: false
+
+      - name: Upload package manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-x86-64-generic.manifest
+          path: bin/targets/x86/64/openwrt-x86-64-generic.manifest
+          if-no-files-found: error
+          archive: false
