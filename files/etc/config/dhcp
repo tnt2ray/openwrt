@@ -1,0 +1,65 @@
+config dnsmasq
+	option domainneeded '1'
+	option rebind_protection '1'
+	option rebind_localhost '1'
+	option local '/lan/'
+	option domain 'lan'
+	option expandhosts '1'
+	option authoritative '1'
+	option readethers '1'
+	option leasefile '/tmp/dhcp.leases'
+	option localservice '1'
+	option ednspacket_max '1232'
+	option dnsseccheckunsigned '0'
+	option cachesize '0'
+	option localuse '1'
+	option resolvfile '/tmp/resolv.conf.d/resolv.conf.auto'
+
+config dhcp 'lan'
+	option interface 'lan'
+	option start '100'
+	option limit '150'
+	option leasetime '12h'
+	option dhcpv4 'server'
+	option ra 'hybrid'
+	option ra_useleasetime '1'
+	list ra_flags 'managed-config'
+	list ra_flags 'other-config'
+	option dhcpv6 'hybrid'
+
+config odhcpd 'odhcpd'
+	option maindhcp '0'
+	option leasefile '/tmp/hosts/odhcpd'
+	option leasetrigger '/usr/sbin/odhcpd-update'
+	option loglevel '4'
+
+config tag 'proxy'
+	option dhcp_option '6,1.1.1.1'
+
+config host
+	option name 'DiskStation'
+	option ip '192.168.1.119'
+	option mac '00:11:32:34:86:E2'
+
+config host
+	option name 'ZH-DiskStation'
+	option ip '192.168.1.132'
+	option mac '00:11:32:61:10:F8'
+
+config host
+	option name 'keting'
+	option ip '192.168.1.215'
+	option mac 'F0:B3:EC:49:E1:2E'
+
+config host
+	option name 'Air'
+	option ip '192.168.1.102'
+	option mac 'A4:83:E7:26:36:B6'
+
+config dhcp 'WAN'
+	option interface 'WAN'
+	option ignore '1'
+	option ra 'hybrid'
+	option dhcpv6 'hybrid'
+	list ra_flags 'managed-config'
+	list ra_flags 'other-config'

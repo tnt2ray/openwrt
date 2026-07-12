@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# When sysupgrade preserves the old config, remove the stale firewall include
+# from the previous OpenClash installation. The OpenClash config file itself is
+# left in place in case it contains user data that should be exported first.
+uci -q delete firewall.openclash
+uci -q commit firewall
+
+exit 0
