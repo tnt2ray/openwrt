@@ -55,7 +55,8 @@ jobs:
           make defconfig
           grep -Fx 'CONFIG_GRUB_EFI_IMAGES=y' .config
           grep -Fx 'CONFIG_GRUB_CONSOLE=y' .config
-          grep -Fx 'CONFIG_TARGET_SERIAL=""' .config
+          grep -Fx 'CONFIG_TARGET_SERIAL="ttyS0"' .config
+          grep -Fx 'CONFIG_GRUB_BAUDRATE=115200' .config
           grep -Fx 'CONFIG_GRUB_TIMEOUT="1"' .config
           ./scripts/diffconfig.sh > build.diffconfig
           cat build.diffconfig
@@ -91,8 +92,9 @@ jobs:
           sudo sed -n '1,80p' "$workdir/boot/boot/grub/grub.cfg"
           sudo grep -Fx 'set default="0"' "$workdir/boot/boot/grub/grub.cfg"
           sudo grep -Fx 'set timeout="1"' "$workdir/boot/boot/grub/grub.cfg"
-          sudo grep -F 'terminal_input console; terminal_output console' "$workdir/boot/boot/grub/grub.cfg"
-          ! sudo grep -E '(^|[ ;])serial([ ;]|$)' "$workdir/boot/boot/grub/grub.cfg"
+          sudo grep -F 'terminal_input console serial; terminal_output console serial' "$workdir/boot/boot/grub/grub.cfg"
+          sudo grep -F 'serial --unit=0 --speed=115200' "$workdir/boot/boot/grub/grub.cfg"
+          ! sudo grep -Fx 'set timeout="0"' "$workdir/boot/boot/grub/grub.cfg"
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v7
