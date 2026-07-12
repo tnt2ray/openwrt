@@ -150,11 +150,3 @@ jobs:
           path: bin/targets/x86/64/openwrt-x86-64-generic-squashfs-rootfs.img.gz
           if-no-files-found: error
           archive: false
-
-      - name: Upload package manifest
-        uses: actions/upload-artifact@v7
-        with:
-          name: openwrt-x86-64-generic.manifest
-          path: bin/targets/x86/64/openwrt-x86-64-generic.manifest
-          if-no-files-found: error
-          archive: false
